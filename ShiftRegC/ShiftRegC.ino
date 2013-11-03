@@ -12,6 +12,9 @@
 const boolean LEFT_SIDE = 0;
 const boolean RIGHT_SIDE = 1;
 
+const boolean SCORE_BUTTON = 0;
+const boolean PENALTY_BUTTON = 1; 
+
 const int THREASHOLD = 30;
 
 const byte numeral[21] = {
@@ -102,53 +105,55 @@ void loop() {
     //take the latch pin high so the LEDs will light up:
     //digitalWrite(C_latchPin, HIGH);
     // pause before next value:
-    int leftSensorValue = analogRead(leftPunchSensor);
-    int rightSensorValue = analogRead(rightPunchSensor);
-    if(leftSensorValue>=THREASHOLD)
+    boolean sideDetected;
+    while(true) //Wait until a sensor is triggered.
     {
-      //LEFT DETECTED
-      C_data = C_data | B00000100; //Set score left
-      Serial.print("LEFT - ");
-      Serial.print(leftSensorValue);
-      Serial.println("");
-      shitOutC();
-      boolean score = isScore(); //Wait for score or penalty button to be pushed
-      if(score)
+      int leftSensorValue = analogRead(leftPunchSensor);
+      int rightSensorValue = analogRead(rightPunchSensor);
+      if(leftSensorValue>=THREASHOLD)
       {
-          //Increment counter
-          scoreLeft++;
-          setScoreLeft(scoreLeft);
+        //LEFT DETECTED
+        sideDetected = LEFT_SIDE;
+        C_data = C_data | B00000100; //Set score left
+        Serial.print("LEFT - ");
+        Serial.print(leftSensorValue);
+        Serial.println("");
+        break;
+      }
+      else if(rightSensorValue>=THREASHOLD)
+      {
+        //RIGHT DETECTED
+        sideDetected = RIGHT_SIDE;
+        Serial.print("RIGHT - ");
+        Serial.print(rightSensorValue);
+        Serial.println("");
+        C_data = C_data | B00001000; //Set score right
+        break;    
       }
       else
       {
-         //Penalty
-         incPenalty(LEFT_SIDE);
+        //Not detected. Start loop again.
+         continue; 
       }
-      unsetScoreLEDs();
-    }
-    else if(rightSensorValue>=THREASHOLD)
+    }  //End While loop to check for snesor detection
+    
+    shitOutC(); //Light score LED
+    boolean score = isScore(); //Wait for score or penalty button to be pushed
+    unsetScoreLEDs();
+    if(score)
     {
-      //RIGHT DETECTED
-      Serial.print("RIGHT - ");
-      Serial.print(rightSensorValue);
-      Serial.println("");
-      C_data = C_data | B00001000; //Set score right
-      shitOutC();
-      boolean score = isScore(); //Wait for score or penalty button to be pushed
-      if(score)
-      {
-          //Increment counter
-          scoreRight++;
-          setScoreRight(scoreRight);
-      }
-      else
-      {
-         //Penalty
-         incPenalty(RIGHT_SIDE);
-      }
-      unsetScoreLEDs();
+        //Increment counter
+        incScore(sideDetected);
+        waitForbuttonRelease(SCORE_BUTTON);
     }
-}
+    else
+    {
+       //Penalty
+       incPenalty(sideDetected);
+       waitForbuttonRelease(PENALTY_BUTTON);
+    }
+}//End loop
+
 
 boolean isScore(){
  int score = 0; //O is unset
@@ -167,12 +172,58 @@ boolean isScore(){
   }
 }
 
+void waitForbuttonRelease(boolean button)
+{
+   if(button == PENALTY_BUTTON)
+   {
+       //Wait until button is releaed
+       while(digitalRead(penaltyPin) == HIGH)
+       {
+          //wait for button to go low
+       }
+       return;
+   }
+   else
+   {
+       //Wait until button is released
+       while(digitalRead(scorePin) == HIGH)
+       {
+          //wait for button to go low
+       }
+        return; 
+   }
+ }
+  
+
 void unsetScoreLEDs(){
     C_data = C_data & B11110011; //Set score right
     shitOutC();
 }
 
-void incPenalty(int sideOfCar) {
+void incScore(boolean sideOfCar)
+{
+  if(sideOfCar == RIGHT_SIDE)
+  {
+      scoreRight++;
+      Serial.print("SCORE RIGHT - ");
+      Serial.print(scoreRight);
+      Serial.println("");
+      //Set score display
+      setScoreRight(scoreRight);
+  }
+  else
+  {
+     //Left side 
+      scoreLeft++;
+      Serial.print("SCORE LEFT - ");
+      Serial.print(scoreLeft);
+      Serial.println("");
+      //Set score display
+      setScoreLeft(scoreLeft);
+  }
+}
+
+void incPenalty(boolean sideOfCar) {
   if(sideOfCar == RIGHT_SIDE)
   {
     penaltyRight++;
