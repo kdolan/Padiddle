@@ -17,8 +17,15 @@ const boolean PENALTY_BUTTON = 1;
 
 const int THREASHOLD = 30;
 
+//Game mode determines the behavior of incScore and incPenalty
+//gameMode 0: Friendly game. Inc penalty and score
+//gameMode 1: Competative game. Inc score decreses opponent score if they have no-zero score
+  //If both players have zero then score is incremnted to 1
+  //Penalties do not cancel eachother out.
+int gameMode = 0;  
+
 const byte numeral[21] = {
-    B11111100,  // 0
+    B00000000,  // NULL (Off) --No purpose for zero number. "Off" is zero.
     B01100000,  // 1
     B11011010,  // 2
     B11110010,  // 3
@@ -41,8 +48,11 @@ const byte numeral[21] = {
     B00000000,  //NULL (Off)
 };
 
-int scorePin = 2;
-int penaltyPin = 3;
+int scorePin = 2; //Pin for score button
+int penaltyPin = 3; //Pin for penalty button.
+
+int configPin_0 = 4;
+int configPin_1 = 5;
 
 //Pin connected to SH_CP of 74HC595
 int clockPin = 12;
@@ -83,6 +93,26 @@ void setup() {
   
   pinMode(scorePin, INPUT);
   pinMode(penaltyPin, INPUT);
+  
+  pinMode(configPin_0, INPUT);
+  pinMode(configPin_1, INPUT);
+  
+  int configPin_0_state = digitalRead(configPin_0);
+  int configPin_1_state = digitalRead(configPin_1);
+  
+  if(configPin_0_state == LOW && configPin_1_state == LOW) //0
+  {
+    gameMode = 0;
+  }
+  else if(configPin_0_state == LOW && configPin_1_state == LOW) //1
+  {
+    gameMode = 1;
+  }
+  else
+  {
+     //2,3 --> default to gameMode 0.
+     gameMode = 0;   
+  }
   
   C_data = B11111100;
   shitOutC();
@@ -181,6 +211,7 @@ void waitForbuttonRelease(boolean button)
        {
           //wait for button to go low
        }
+       Serial.println("Penalty button relased");
        return;
    }
    else
@@ -190,7 +221,8 @@ void waitForbuttonRelease(boolean button)
        {
           //wait for button to go low
        }
-        return; 
+       Serial.println("Score button relased");
+       return; 
    }
  }
   
@@ -204,23 +236,57 @@ void incScore(boolean sideOfCar)
 {
   if(sideOfCar == RIGHT_SIDE)
   {
+    if(gameMode == 0)
+    {
       scoreRight++;
       Serial.print("SCORE RIGHT - ");
       Serial.print(scoreRight);
       Serial.println("");
-      //Set score display
-      setScoreRight(scoreRight);
+    }
+    else if(gameMode == 1)
+    {
+      if(scoreRight == 0 && scoreLeft == 0)
+      {
+          //inc score right
+          scoreRight++;
+          Serial.println("Right ahead or both zero. INC RIGHT");
+      }
+      else
+      {
+         //Score left must be higher. Dec left score
+         Serial.println("Left ahead. DEC LEFT");
+         scoreLeft--; 
+      }
+    }
   }
   else
   {
-     //Left side 
+    if(gameMode == 0){ 
+      //Left side 
       scoreLeft++;
       Serial.print("SCORE LEFT - ");
       Serial.print(scoreLeft);
       Serial.println("");
-      //Set score display
-      setScoreLeft(scoreLeft);
+    }
+    else if(gameMode == 1)
+    {
+      if(scoreRight == 0 && scoreLeft == 0)
+      {
+          //inc score left
+          scoreLeft++;
+          Serial.println("Left ahead or both zero. INC LEFT");
+      }
+      else
+      {
+         //Score right must be higher. Dec right score
+         scoreRight--; 
+         Serial.println("Right ahead. DEC RIGHT");
+      }
+    }
   }
+  //Set score displays
+  setScoreRight(scoreRight);
+  setScoreLeft(scoreLeft);
 }
 
 void incPenalty(boolean sideOfCar) {
