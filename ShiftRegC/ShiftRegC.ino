@@ -162,8 +162,22 @@ void loop() {
       }
       else
       {
-        //Not detected. Start loop again.
-         continue; 
+         //Not detected. Check for score decrement
+         int scoreState_LeftDec= digitalRead(scorePin);
+         int penaltyState_RightDec = digitalRead(penaltyPin);
+         if(scoreState_LeftDec == HIGH)
+         {
+              //Decrement socre left
+              decScore(LEFT_SIDE);
+              waitForbuttonRelease(SCORE_BUTTON);
+         }
+         else if (penaltyState_RightDec == HIGH)
+         {
+              //Decrement socre right
+              decScore(RIGHT_SIDE);
+              waitForbuttonRelease(PENALTY_BUTTON);
+         }
+         continue; //Restart loop
       }
     }  //End While loop to check for snesor detection
     
@@ -230,6 +244,26 @@ void waitForbuttonRelease(boolean button)
 void unsetScoreLEDs(){
     C_data = C_data & B11110011; //Set score right
     shitOutC();
+}
+
+void decScore(boolean sideOfCar)
+{
+  if(sideOfCar == RIGHT_SIDE)
+  {
+      scoreRight--;
+      Serial.print("SCORE RIGHT - ");
+      Serial.print(scoreRight);
+      Serial.println("");
+      setScoreRight(scoreRight);
+  }
+  else //LEFT_SIDE 
+  {
+      scoreLeft--;
+      Serial.print("SCORE LEFT - ");
+      Serial.print(scoreLeft);
+      Serial.println("");
+      setScoreLeft(scoreLeft);
+  }
 }
 
 void incScore(boolean sideOfCar)
